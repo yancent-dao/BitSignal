@@ -1,0 +1,12 @@
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+httpx>=0.27.0
+feedparser>=6.0.11
+pydantic>=2.7.0
+pydantic-settings>=2.3.0
+x402[evm]>=0.3.0
+uagents>=0.13.0
+openai>=1.30.0
+apscheduler>=3.10.4
+aiofiles>=23.2.1
+python-dotenv>=1.0.1
