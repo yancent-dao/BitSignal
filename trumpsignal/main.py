@@ -19,7 +19,7 @@ from pathlib import Path
 import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from config import settings
 from sources.truth_social import TruthSocialSource

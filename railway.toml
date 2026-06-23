@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r trumpsignal/requirements.txt"
+
+[deploy]
+startCommand = "python trumpsignal/main.py"
+healthcheckPath = "/health"
