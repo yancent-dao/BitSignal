@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import FastAPI
+import httpx
+from fastapi import FastAPI, Request, Response
 
 from config import settings
 from x402.http import FacilitatorConfig, HTTPFacilitatorClient, PaymentOption
@@ -13,6 +14,8 @@ from x402.server import x402ResourceServer
 
 from .routes_pull import router as pull_router
 from .webhook import router as webhook_router  # noqa: F401 – registers push callback as side effect
+
+_UAGENT_BASE = f"http://127.0.0.1:{settings.agent_port}"
 
 
 def create_app(lifespan=None) -> FastAPI:
@@ -65,6 +68,34 @@ def create_app(lifespan=None) -> FastAPI:
                 for s in recent
             ],
         }
+
+    # ── ACP 代理路由：把 AgentVerse 发来的消息转发给本地 uAgent ─────────────────
+    @app.api_route("/submit", methods=["POST", "HEAD"])
+    async def acp_submit(request: Request) -> Response:
+        body = await request.body()
+        async with httpx.AsyncClient() as client:
+            resp = await client.request(
+                method=request.method,
+                url=f"{_UAGENT_BASE}/submit",
+                content=body,
+                headers={"content-type": request.headers.get("content-type", "application/json")},
+                timeout=30.0,
+            )
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type=resp.headers.get("content-type", "application/json"),
+        )
+
+    @app.get("/agent_info")
+    async def acp_agent_info() -> Response:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(f"{_UAGENT_BASE}/agent_info", timeout=5.0)
+        return Response(
+            content=resp.content,
+            status_code=resp.status_code,
+            media_type="application/json",
+        )
 
     app.include_router(pull_router)
     app.include_router(webhook_router)
