@@ -1,6 +1,6 @@
 [build]
 builder = "nixpacks"
-buildCommand = "pip install -r trumpsignal/requirements.txt"
+buildCommand = "pip3 install -r trumpsignal/requirements.txt"
 
 [deploy]
 startCommand = "python trumpsignal/main.py"
