@@ -25,12 +25,15 @@ class Settings(BaseSettings):
 
     # 服务
     gateway_host: str = "0.0.0.0"
-    gateway_port: int = 8000
-    port: int = 0  # Railway 注入的 PORT 环境变量
+    gateway_port: int = 8080
+    port: int = 0  # Railway 注入的 PORT 环境变量（可能与 agent_port 冲突，优先用 gateway_port）
 
     @property
     def effective_port(self) -> int:
-        return self.port if self.port else self.gateway_port
+        # 如果 PORT 和 agent_port 相同（Railway TCP Proxy 冲突），用 gateway_port
+        if self.port and self.port != self.agent_port:
+            return self.port
+        return self.gateway_port
     public_base_url: str = ""
 
     # 日志
