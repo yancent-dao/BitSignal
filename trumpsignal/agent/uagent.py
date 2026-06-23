@@ -74,8 +74,7 @@ agent = Agent(
     name="TrumpSignal",
     port=settings.agent_port,
     seed=settings.agent_seed_phrase,
-    mailbox=True,
-    network="testnet",
+    endpoint=[f"{settings.public_base_url}/submit"] if settings.public_base_url else [f"http://localhost:{settings.agent_port}/submit"],
 )
 
 agent.include(signal_protocol, publish_manifest=True)
