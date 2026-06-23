@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python311"]
+
+[phases.install]
+cmds = ["cd trumpsignal && pip install -r requirements.txt"]
+
+[start]
+cmd = "cd trumpsignal && python main.py"
