@@ -1,3 +1,0 @@
-# 根目录 requirements.txt，让 Railway 识别为 Python 项目
-# 实际依赖在 trumpsignal/requirements.txt
--r trumpsignal/requirements.txt
