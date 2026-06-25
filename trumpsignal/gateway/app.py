@@ -73,12 +73,14 @@ def create_app(lifespan=None) -> FastAPI:
     @app.api_route("/submit", methods=["POST", "HEAD"])
     async def acp_submit(request: Request) -> Response:
         body = await request.body()
+        # Forward all headers so x-uagents-connection: sync is preserved
+        forward_headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
         async with httpx.AsyncClient() as client:
             resp = await client.request(
                 method=request.method,
                 url=f"{_UAGENT_BASE}/submit",
                 content=body,
-                headers={"content-type": request.headers.get("content-type", "application/json")},
+                headers=forward_headers,
                 timeout=30.0,
             )
         return Response(
