@@ -89,6 +89,8 @@ def main() -> None:
         host=settings.gateway_host,
         port=settings.effective_port,
         log_level=settings.log_level.lower(),
+        proxy_headers=True,   # 让 uvicorn 读 X-Forwarded-Proto，修正 https scheme
+        forwarded_allow_ips="*",
     )
 
 
