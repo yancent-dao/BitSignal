@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     # 测试网：https://x402.org/facilitator
     # 主网：https://api.cdp.coinbase.com/platform/v2/x402（需 CDP 账号，1000笔/月免费）
     facilitator_url: str = "https://x402.org/facilitator"
+    # CDP 主网 facilitator 鉴权（仅当 facilitator_url 指向 cdp.coinbase.com 时需要）
+    cdp_api_key_id: str = ""
+    cdp_api_key_secret: str = ""
 
     # AgentVerse
     agentverse_api_key: str = ""

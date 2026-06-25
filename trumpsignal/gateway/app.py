@@ -6,7 +6,7 @@ import httpx
 from fastapi import FastAPI, Request, Response
 
 from config import settings
-from x402.http import FacilitatorConfig, HTTPFacilitatorClient, PaymentOption
+from x402.http import PaymentOption
 from x402.http.middleware.fastapi import PaymentMiddlewareASGI
 from x402.http.types import RouteConfig
 from x402.mechanisms.evm.exact import ExactEvmServerScheme
@@ -103,9 +103,8 @@ def create_app(lifespan=None) -> FastAPI:
     app.include_router(webhook_router)
 
     # x402 支付中间件
-    facilitator = HTTPFacilitatorClient(
-        FacilitatorConfig(url=settings.facilitator_url)
-    )
+    from .facilitator import build_facilitator
+    facilitator = build_facilitator()
     server = x402ResourceServer(facilitator)
     server.register(settings.evm_network, ExactEvmServerScheme())
 
