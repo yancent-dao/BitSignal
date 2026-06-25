@@ -216,6 +216,30 @@ facilitator = HTTPFacilitatorClient(FacilitatorConfig(url=settings.facilitator_u
 > x402.org/facilitator 是官方免费测试网 facilitator，只支持 Base Sepolia。  
 > 上线时换 Coinbase CDP facilitator（需注册账号，1000 笔/月免费，之后 $0.001/笔），接口完全一致，只改配置。
 
+### x402 付款踩坑（务必注意）
+
+1. **反向代理 scheme**：Railway/任何在 TLS 终止代理后运行的服务，uvicorn 必须开
+   `proxy_headers=True, forwarded_allow_ips="*"`。否则 ASGI scope 里 URL 是 `http://`，
+   x402 签名 URL 与实际 HTTPS 不匹配，facilitator 验证失败（表现为带付款后仍返回 402）。
+
+2. **付款 header 名是 `PAYMENT-SIGNATURE`**（x402 v2），不是 `X-PAYMENT`。
+   服务端 `_extract_payment` 只读 `PAYMENT-SIGNATURE`。
+
+3. **客户端编码用 SDK 函数**，别手写 base64：
+   ```python
+   from x402.http.utils import encode_payment_signature_header
+   header = encode_payment_signature_header(payload)  # PAYMENT-SIGNATURE 的值
+   ```
+   手写 `base64(model_dump_json())` 会因 `by_alias`/`exclude_none` 不一致导致解析失败。
+
+4. **客户端付款流程**：GET → 收 402 → 解 `payment-required` header（base64 JSON）→
+   `x402Client.create_payment_payload()` 签名 → 带 `PAYMENT-SIGNATURE` 重发 → 200。
+   完整可用示例见 `trumpsignal/test_payment.py`。
+
+5. **测试钱包**：Base Sepolia 需要测试 USDC（[faucet.circle.com](https://faucet.circle.com)）。
+   注意 facilitator 走 EIP-3009 `transferWithAuthorization`，是离线签名，
+   **测试钱包不需要 ETH gas**（gas 由 facilitator 代付）。
+
 ---
 
 ## 七、上线检查清单
