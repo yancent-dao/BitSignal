@@ -104,7 +104,7 @@ def create_app(lifespan=None) -> FastAPI:
 
     # x402 支付中间件
     facilitator = HTTPFacilitatorClient(
-        FacilitatorConfig(url="https://x402.org/facilitator")
+        FacilitatorConfig(url=settings.facilitator_url)
     )
     server = x402ResourceServer(facilitator)
     server.register(settings.evm_network, ExactEvmServerScheme())

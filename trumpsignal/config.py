@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     # 支付
     payment_recipient_address: str = "0x0000000000000000000000000000000000000000"
     use_testnet: bool = True
+    # facilitator：测试网用 x402.org（免费），主网换 Coinbase CDP 或 x402.rs
+    # 测试网：https://x402.org/facilitator
+    # 主网：https://api.cdp.coinbase.com/platform/v2/x402（需 CDP 账号，1000笔/月免费）
+    facilitator_url: str = "https://x402.org/facilitator"
 
     # AgentVerse
     agentverse_api_key: str = ""
