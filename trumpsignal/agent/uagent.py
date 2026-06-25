@@ -155,12 +155,6 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage):
     text = msg.text() if hasattr(msg, "text") else ""
     ctx.logger.info("Chat from %s: %s", sender, text[:120])
 
-    # 先回 ack
-    await ctx.send(
-        sender,
-        ChatAcknowledgement(acknowledged_msg_id=msg.msg_id),
-    )
-
     try:
         signals = _query_from_text(text or "")
         reply = _format_signals(signals)
@@ -168,12 +162,19 @@ async def handle_chat(ctx: Context, sender: str, msg: ChatMessage):
         ctx.logger.error("chat query failed: %s", exc)
         reply = "Sorry, I hit an error fetching signals. Please try again shortly."
 
+    # 先发带内容的文本回复（sync 模式下成为同步响应，AgentVerse 才能读到内容）
     await ctx.send(
         sender,
         ChatMessage(
             timestamp=datetime.now(timezone.utc),
             content=[TextContent(type="text", text=reply)],
         ),
+    )
+
+    # 再补一个 ack（异步，确认收到对方消息）
+    await ctx.send(
+        sender,
+        ChatAcknowledgement(acknowledged_msg_id=msg.msg_id),
     )
 
 
