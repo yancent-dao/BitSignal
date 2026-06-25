@@ -52,17 +52,18 @@ def _build_cdp_create_headers(base_url: str, api_key_id: str, api_key_secret: st
 
 def build_facilitator() -> HTTPFacilitatorClient:
     """根据配置构造 facilitator 客户端（自动选测试网/主网 CDP）。"""
-    url = settings.facilitator_url
+    # strip 掉环境变量可能带入的空格/换行（Railway 粘贴常见问题）
+    url = settings.facilitator_url.strip().rstrip("/")
     is_cdp = "cdp.coinbase.com" in url
 
     if is_cdp:
-        if not (settings.cdp_api_key_id and settings.cdp_api_key_secret):
+        key_id = settings.cdp_api_key_id.strip()
+        key_secret = settings.cdp_api_key_secret.strip()
+        if not (key_id and key_secret):
             raise RuntimeError(
                 "使用 CDP facilitator 需设置 CDP_API_KEY_ID 和 CDP_API_KEY_SECRET"
             )
-        create_headers = _build_cdp_create_headers(
-            url, settings.cdp_api_key_id, settings.cdp_api_key_secret
-        )
+        create_headers = _build_cdp_create_headers(url, key_id, key_secret)
         auth_provider = CreateHeadersAuthProvider(create_headers)
         logger.info("Using CDP production facilitator: %s", url)
         client = HTTPFacilitatorClient(FacilitatorConfig(url=url, auth_provider=auth_provider))
