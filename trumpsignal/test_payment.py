@@ -24,7 +24,7 @@ from x402.mechanisms.evm.signers import EthAccountSigner
 from x402.schemas import PaymentRequired
 
 TARGET_URL = "https://trumpsignal-production.up.railway.app/signals/recent?limit=3"
-NETWORK = "eip155:84532"  # Base Sepolia testnet
+NETWORK = "eip155:8453"  # Base mainnet（真实 USDC）
 
 
 async def main():

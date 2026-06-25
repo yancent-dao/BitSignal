@@ -190,9 +190,45 @@ def evm_network(self) -> str:
    r = await http.get(url, headers={"PAYMENT-SIGNATURE": header_value})
    ```
 6. 测试钱包：Base Sepolia USDC 从 faucet.circle.com 领。EIP-3009 离线签名，
-   **gas 由 facilitator 代付，测试钱包不需要 ETH**。
+   **gas 由 facilitator 代付，付款钱包不需要 ETH**。
 
 完整可用示例参考 `trumpsignal/test_payment.py`。
+
+### 主网上线（CDP facilitator，实测通过）
+
+主网必须换生产 facilitator，CDP 需 JWT 鉴权：
+
+1. **注册 CDP**：portal.cdp.coinbase.com → Settings → API Keys → **Secret API Keys** →
+   Create（个人账号即可）。拿到 `CDP_API_KEY_ID`(UUID) + `CDP_API_KEY_SECRET`(base64 Ed25519)。
+
+2. **依赖加 `cdp-sdk`**，生成三端点 JWT 并包成 auth_provider：
+   ```python
+   from cdp.auth.utils.http import GetAuthHeadersOptions, get_auth_headers
+   from x402.http.facilitator_client_base import CreateHeadersAuthProvider
+
+   def create_headers():
+       def h(method, ep):
+           return get_auth_headers(GetAuthHeadersOptions(
+               api_key_id=key_id.strip(), api_key_secret=key_secret.strip(),
+               request_method=method, request_host="api.cdp.coinbase.com",
+               request_path=f"/platform/v2/x402/{ep}"))
+       return {"verify": h("POST","verify"), "settle": h("POST","settle"),
+               "supported": h("GET","supported")}
+
+   client = HTTPFacilitatorClient(FacilitatorConfig(
+       url=cdp_url.rstrip("/"), auth_provider=CreateHeadersAuthProvider(create_headers)))
+   ```
+
+3. **Railway 改 4 个变量**：`USE_TESTNET=false`、
+   `FACILITATOR_URL=https://api.cdp.coinbase.com/platform/v2/x402`、
+   `CDP_API_KEY_ID`、`CDP_API_KEY_SECRET`。
+
+**主网三大坑（务必）：**
+- **CDP 凭证必须 `.strip()`**：Railway 粘贴常带尾部换行，key_id 多一个换行 → CDP
+  `get_supported failed (401)`。读取后立即 strip。
+- **facilitator_url 必须 `.rstrip("/")`**：尾斜杠导致 `//supported` 路径与 JWT 签名不匹配 → 401。
+- **加启动探测**：构造后立即 `client.get_supported()` 并 log，把真实鉴权错误暴露到日志，
+  否则只在首次付费请求时报 500，难排查。本地用 `test_cdp.py` 先验证 key 有效。
 
 ---
 
@@ -208,3 +244,11 @@ def evm_network(self) -> str:
 - [ ] Agent-to-Agent `send_sync_message` 测试返回数据
 - [ ] x402 付费测试：402 → PAYMENT-SIGNATURE → 200 全流程通过
 - [ ] `GET /health` → 200
+
+### 主网上线额外检查
+- [ ] CDP Secret API Key 已创建，本地 `test_cdp.py` 返回 200
+- [ ] `cdp-sdk` 已加入 requirements
+- [ ] CDP 凭证读取后 `.strip()`，URL `.rstrip("/")`
+- [ ] Railway 4 变量就位，日志出现 `CDP facilitator OK`
+- [ ] 付费接口返回 `eip155:8453` + 真实 USDC 合约 `0x8335...2913`
+- [ ] 真实 USDC 付费一笔，链上确认收款方到账

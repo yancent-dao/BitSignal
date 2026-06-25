@@ -238,7 +238,53 @@ facilitator = HTTPFacilitatorClient(FacilitatorConfig(url=settings.facilitator_u
 
 5. **测试钱包**：Base Sepolia 需要测试 USDC（[faucet.circle.com](https://faucet.circle.com)）。
    注意 facilitator 走 EIP-3009 `transferWithAuthorization`，是离线签名，
-   **测试钱包不需要 ETH gas**（gas 由 facilitator 代付）。
+   **付款钱包不需要 ETH gas**（gas 由 facilitator 代付）。
+
+### 主网上线（CDP facilitator）—— 实测通过
+
+主网必须换生产 facilitator，CDP 需要 JWT 鉴权，比测试网多几步：
+
+**1. 注册 Coinbase CDP，创建 Secret API Key**
+- [portal.cdp.coinbase.com](https://portal.cdp.coinbase.com) → Settings → API Keys → **Secret API Keys** → Create
+- 个人账号即可，不需要 Business
+- 拿到 `CDP_API_KEY_ID`（UUID）和 `CDP_API_KEY_SECRET`（base64 Ed25519，88位以 `==` 结尾）
+
+**2. 依赖加 `cdp-sdk`**，用它生成三端点 JWT：
+```python
+# gateway/facilitator.py 核心逻辑
+from cdp.auth.utils.http import GetAuthHeadersOptions, get_auth_headers
+from x402.http.facilitator_client_base import CreateHeadersAuthProvider
+
+def create_headers():  # verify/settle/supported 各签一个 JWT
+    def h(method, ep):
+        return get_auth_headers(GetAuthHeadersOptions(
+            api_key_id=key_id, api_key_secret=key_secret,
+            request_method=method, request_host="api.cdp.coinbase.com",
+            request_path=f"/platform/v2/x402/{ep}"))
+    return {"verify": h("POST","verify"), "settle": h("POST","settle"),
+            "supported": h("GET","supported")}
+
+client = HTTPFacilitatorClient(FacilitatorConfig(
+    url=cdp_url, auth_provider=CreateHeadersAuthProvider(create_headers)))
+```
+
+**3. Railway 改 4 个环境变量：**
+| 变量 | 值 |
+|------|-----|
+| `USE_TESTNET` | `false` |
+| `FACILITATOR_URL` | `https://api.cdp.coinbase.com/platform/v2/x402` |
+| `CDP_API_KEY_ID` | UUID |
+| `CDP_API_KEY_SECRET` | base64 Ed25519 |
+
+**主网踩坑：**
+- **CDP 凭证必须 `.strip()`**：Railway 粘贴常带入尾部换行/空格，key_id 末尾多一个换行
+  CDP 就找不到 key → `get_supported failed (401)`。代码里读取后务必
+  `settings.cdp_api_key_id.strip()`、`.cdp_api_key_secret.strip()`。
+- **facilitator_url 也要 `.rstrip("/")`**：尾斜杠会让 client 请求 `//supported`，
+  与 JWT 签名的 path 不匹配 → 401。
+- **启动探测**：构造 facilitator 后立即 `client.get_supported()` 并 log，
+  把真实鉴权错误暴露到日志，而不是首次付费请求时才报 500。
+- 调试用 `trumpsignal/test_cdp.py`（本地验证 CDP key 是否有效）。
 
 ---
 
