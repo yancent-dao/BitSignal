@@ -65,7 +65,15 @@ def build_facilitator() -> HTTPFacilitatorClient:
         )
         auth_provider = CreateHeadersAuthProvider(create_headers)
         logger.info("Using CDP production facilitator: %s", url)
-        return HTTPFacilitatorClient(FacilitatorConfig(url=url, auth_provider=auth_provider))
+        client = HTTPFacilitatorClient(FacilitatorConfig(url=url, auth_provider=auth_provider))
+        # 启动时主动探测一次，把真实鉴权/连接错误暴露到日志
+        try:
+            supported = client.get_supported()
+            networks = sorted({k.network for k in supported.kinds})
+            logger.info("CDP facilitator OK. Supported networks: %s", networks)
+        except Exception as exc:
+            logger.error("CDP facilitator probe FAILED: %s: %s", type(exc).__name__, exc)
+        return client
 
     logger.info("Using free testnet facilitator: %s", url)
     return HTTPFacilitatorClient(FacilitatorConfig(url=url))
